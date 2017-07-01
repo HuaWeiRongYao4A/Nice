@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <!-- 配置参数详情参见网址：http://blog.csdn.net/jiuqiyuliang/article/details/48758203 -->
+
+    <!-- 配置JMS连接工厂 -->
+    <bean id="cachingConnectionFactory" class="org.springframework.jms.connection.CachingConnectionFactory">
+        <!-- Session缓存数量 -->
+        <property name="sessionCacheSize" value="100" />
+        <!-- 接收者ID -->
+        <property name="clientId" value="client_119" />
+        <property name="targetConnectionFactory">
+            <bean class="org.apache.activemq.ActiveMQConnectionFactory">
+                <!-- MQ地址 -->
+                <property name="brokerURL" value="tcp://192.168.1.120:61616" />
+                <property name="userName" value="admin" />
+                <property name="password" value="admin" />
+                <!-- 是否异步发送 -->
+                <property name="useAsyncSend" value="true" />
+            </bean>
+        </property>
+    </bean>
+
+    <!-- 发送消息的目的地（Topic主题） -->
+    <bean id="topicDestination" class="org.apache.activemq.command.ActiveMQTopic">
+        <!-- 设置消息主题的名字 -->
+        <constructor-arg index="0" value="ActiveMQ.Advisory.Producer.Topic.Topic.Destination" />
+    </bean>
+
+    <!-- 配置JmsTemplate的Topic类型，Spring的提供的JMS工具类，它发送、接收消息 -->
+    <bean id="jmsTopicTemplate" class="org.springframework.jms.core.JmsTemplate">
+        <property name="connectionFactory" ref="cachingConnectionFactory" />
+        <property name="defaultDestination" ref="topicDestination" />
+        <property name="pubSubDomain" value="true" />
+        <property name="receiveTimeout" value="10000" />
+    </bean>
+
+    <!-- 生产消息配置（自己定义） -->
+    <bean id="topicConsumer" class="StartSubscribe" />
+
+    <!-- 消息监听器 -->
+    <bean id="topicListener" class="org.springframework.jms.listener.adapter.MessageListenerAdapter">
+        <constructor-arg ref="topicConsumer" />
+        <!-- 接收消息的方法名称 -->
+        <property name="defaultListenerMethod" value="receive" />
+        <!-- 不进行消息转换 -->
+        <property name="messageConverter"><null /></property>
+    </bean>
+
+    <!-- 消息监听容器 -->
+    <bean id="topicListenerContainer" class="org.springframework.jms.listener.DefaultMessageListenerContainer">
+        <property name="connectionFactory" ref="cachingConnectionFactory" />
+        <!-- 发布订阅模式 -->
+        <property name="pubSubDomain" value="true" />
+        <!-- 消息持久化 -->
+        <property name="subscriptionDurable" value="true" />
+        <property name="receiveTimeout" value="10000" />
+        <!-- 接收者ID -->
+        <property name="clientId" value="client_119" />
+        <property name="durableSubscriptionName" value="client_119" />
+        <property name="destination" ref="topicDestination" />
+        <property name="messageListener" ref="topicListener" />
+    </bean>
+
+</beans>
